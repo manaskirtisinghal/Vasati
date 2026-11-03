@@ -1,0 +1,65 @@
+Radhe Radhe 🙏
+
+## 1. What is State?
+
+### **Stateful Protocol**
+- Server **stores/retains status + session information** of the client.
+- Example: **FTP**
+
+### **Stateless Protocol**
+- Server **does NOT retain client/session information** between requests.
+- Example: **HTTP**
+
+---
+
+# 2. Express Sessions
+
+**Express Session → makes HTTP sessions stateful** by maintaining user-specific data across requests/pages.
+
+### 🛒 E-commerce Example
+Suppose you use Amazon/Flipkart:
+
+1. User adds **Laptop + Charger** to cart.
+2. Goes to another page → HTTP itself is **stateless**, so it doesn't remember the cart.
+3. We need a way to temporarily remember the user's data.
+4. A **unique Session ID** is created for the user.
+5. Session data is stored **server-side** using that Session ID.
+6. The **Session ID is sent to the client, usually through a cookie**.
+7. On the next request, browser sends the Session ID → server finds the corresponding session → retrieves the cart.
+
+### Example
+
+```text
+USER 1
+Session ID = 101
+    ↓
+Server Session:
+101 → { item: Laptop, item: Charger }
+    ↓
+Cookie on Client: session ID = 101
+```
+
+```text
+USER 2
+Session ID = 102
+    ↓
+Server Session:
+102 → { item: Shirt, item: Pants }
+    ↓
+Cookie on Client: session ID = 102
+```
+
+So **each user gets a unique Session ID**, allowing the server to distinguish their data.
+
+### ⭐ Why not store everything in cookies?
+
+- Cookies have a **size limit**.
+- Cookies are stored on the **client/browser**, so sensitive/full session data should generally **not be stored there**.
+- Client-side cookie data can potentially be **modified/tampered with**.
+- Therefore, commonly:
+  - **Cookie → stores Session ID**
+  - **Server → stores actual session data**
+
+> **Easy memory:**  
+> **Cookie = “Which session am I?”**  
+> **Server Session = “What is inside my session?”**
