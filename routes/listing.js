@@ -1,20 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const wrapAsync=require("../utils/wrapAsync.js");
-const ExpressError=require("../utils/ExpressError.js");
-const { listingSchema, reviewSchema }=require("../schema.js");
 const Listing=require("../models/listing.js");
-
-const validateListing = (req,res,next)=>{
-    let {error}=listingSchema.validate(req.body);
-    if(error){
-        let errMsg=error.details.map((el)=>el.message).join(",");
-        throw new ExpressError(400,errMsg);
-    }
-    else{
-        next();
-    }
-};
+const {isLoggedIn} = require("../middleware.js");
+const {isOwner} = require("../middleware.js");
+const {validateListing} = require("../middleware.js");
 
 //Index route
 router.get("/",wrapAsync(async (req,res)=>{
@@ -22,11 +12,11 @@ router.get("/",wrapAsync(async (req,res)=>{
     res.render("./listings/index.ejs",{allListings})
 }));
 
-router.get("/new",(req,res)=>{
+router.get("/new",isLoggedIn,(req,res)=>{
     res.render("./listings/new.ejs");
 });
 
-router.post("/", validateListing, wrapAsync(async (req,res)=>{
+router.post("/",isLoggedIn, validateListing, wrapAsync(async (req,res)=>{
     // if(! req.body.listing){
     //     throw new ExpressError(400,"Send valid data for listing");
     // }
@@ -34,14 +24,22 @@ router.post("/", validateListing, wrapAsync(async (req,res)=>{
         ...req.body.listing,
         image: { url: req.body.listing.image }
     });
+    newListing.owner = req.user._id;
     await newListing.save();
     req.flash("success","New Listing created!");//key->value
     res.redirect("/listings");
 }));
 
+//Show Route
 router.get("/:id",wrapAsync(async (req,res)=>{
     let {id}=req.params;
-    const listing = await Listing.findById(id).populate("reviews");
+    const listing = await Listing.findById(id)
+    .populate({path:"reviews", 
+        populate: {
+            path: "author",
+        },
+    })
+    .populate("owner");
     if(!listing){
         req.flash("error","Listing you requested for does not exist!");
         return res.redirect("/listings");
@@ -50,14 +48,18 @@ router.get("/:id",wrapAsync(async (req,res)=>{
 }));
 
 //Edit
-router.get("/:id/edit",wrapAsync(async (req,res)=>{
+router.get("/:id/edit",isLoggedIn,isOwner,wrapAsync(async (req,res)=>{
     let {id}=req.params;
     const listing = await Listing.findById(id);
     res.render("./listings/edit.ejs",{listing});
 }));
 
 //Update after edit inputted
-router.patch("/:id", validateListing, wrapAsync(async (req,res)=>{
+router.patch("/:id"
+    ,isLoggedIn
+    ,isOwner
+    ,validateListing, 
+    wrapAsync(async (req,res)=>{
     let {id}=req.params;
     // console.log(req.body.listing);
     // console.log({...req.body.listing});
@@ -66,11 +68,14 @@ router.patch("/:id", validateListing, wrapAsync(async (req,res)=>{
         image: { url: req.body.listing.image }
     });
     //console.log(op);
-    req.flash("success","Review Updated!");
+    req.flash("success","Listing Updated!");
     res.redirect(`/listings/${id}`);
 }));
 
-router.delete("/:id",wrapAsync(async (req,res)=>{
+router.delete("/:id"
+    ,isLoggedIn
+    ,isOwner
+    ,wrapAsync(async (req,res)=>{
     let {id}=req.params;
     let deletedListing = await Listing.findByIdAndDelete(id);//Now findByIdAndDelet will always call the post middleware before model in listing.js
     console.log(deletedListing);
